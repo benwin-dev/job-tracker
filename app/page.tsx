@@ -6,12 +6,16 @@ import { getCompanies, deleteCompany } from '@/lib/storage';
 import { filterCompaniesByTime } from '@/lib/utils';
 import CompanyCard from '@/components/CompanyCard';
 import CompanyForm from '@/components/CompanyForm';
+import TimelineView from '@/components/TimelineView';
+
+type ViewMode = 'company' | 'timeline';
 
 export default function Home() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [filteredCompanies, setFilteredCompanies] = useState<Company[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('company');
 
   useEffect(() => {
     loadCompanies();
@@ -52,33 +56,64 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Filter by time:
-            </label>
-            <select
-              value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="this-week">This Week</option>
-              <option value="this-month">This Month</option>
-              <option value="older">Older</option>
-            </select>
+        <div className="mb-6 space-y-4">
+          {/* View Mode Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+              <button
+                onClick={() => setViewMode('company')}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  viewMode === 'company'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                Company View
+              </button>
+              <button
+                onClick={() => setViewMode('timeline')}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  viewMode === 'timeline'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                Timeline View
+              </button>
+            </div>
+
+            {viewMode === 'company' && (
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="px-4 py-2 font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors shadow-sm"
+              >
+                {showAddForm ? 'Cancel' : '+ Add Company'}
+              </button>
+            )}
           </div>
 
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="px-4 py-2 font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors shadow-sm"
-          >
-            {showAddForm ? 'Cancel' : '+ Add Company'}
-          </button>
+          {/* Time Filter - only show in company view */}
+          {viewMode === 'company' && (
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Filter by time:
+              </label>
+              <select
+                value={timeFilter}
+                onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
+                className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="this-week">This Week</option>
+                <option value="this-month">This Month</option>
+                <option value="older">Older</option>
+              </select>
+            </div>
+          )}
         </div>
 
-        {showAddForm && (
+        {viewMode === 'company' && showAddForm && (
           <div className="mb-6">
             <CompanyForm
               onSave={() => {
@@ -90,25 +125,29 @@ export default function Home() {
           </div>
         )}
 
-        {filteredCompanies.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <p className="text-gray-500 dark:text-gray-400">
-              {companies.length === 0
-                ? 'No companies yet. Add your first company to get started!'
-                : 'No companies match the selected time filter.'}
-            </p>
-          </div>
+        {viewMode === 'company' ? (
+          filteredCompanies.length === 0 ? (
+            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <p className="text-gray-500 dark:text-gray-400">
+                {companies.length === 0
+                  ? 'No companies yet. Add your first company to get started!'
+                  : 'No companies match the selected time filter.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredCompanies.map((company) => (
+                <CompanyCard
+                  key={company.id}
+                  company={company}
+                  onUpdate={loadCompanies}
+                  onDelete={() => handleDeleteCompany(company.id)}
+                />
+              ))}
+            </div>
+          )
         ) : (
-          <div className="space-y-4">
-            {filteredCompanies.map((company) => (
-              <CompanyCard
-                key={company.id}
-                company={company}
-                onUpdate={loadCompanies}
-                onDelete={() => handleDeleteCompany(company.id)}
-              />
-            ))}
-          </div>
+          <TimelineView companies={companies} onUpdate={loadCompanies} />
         )}
 
         {companies.length > 0 && (
